@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta name="color-scheme" content="light dark">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex, nofollow">
+<title>사건 결말 추적</title>
+<meta name="theme-color" content="#f3f5f8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#11151c" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Noto+Serif+KR:wght@700&display=swap">
+<link rel="stylesheet" href="app.css">
+<script src="app.js" defer></script>
+</head>
+<body>
+
+<!-- 잠금 화면 -->
+<section id="v-lock" class="lock" hidden>
+  <form id="lock-form" class="lock-card" autocomplete="off">
+    <img src="icons/icon-192.png" alt="" width="56" height="56">
+    <h1>사건 결말 추적</h1>
+    <p>비밀번호를 입력하면 이 기기에서 계속 열려요.</p>
+    <label class="sr" for="lock-pass">비밀번호</label>
+    <input id="lock-pass" type="password" placeholder="비밀번호" autocomplete="current-password" required>
+    <label class="check"><input id="lock-remember" type="checkbox" checked> 이 기기에서 기억하기</label>
+    <button type="submit" class="primary" id="lock-btn">열기</button>
+    <p class="err" id="lock-err" role="alert" hidden></p>
+  </form>
+</section>
+
+<!-- 불러오는 중 -->
+<section id="v-load" class="lock"><p class="muted">불러오는 중…</p></section>
+
+<!-- 사건 목록 -->
+<section id="v-home" hidden>
+  <header class="bar"><div class="bar-in wrap">
+    <h1 class="brand">사건 결말 추적</h1>
+    <button class="icon-btn" id="btn-refresh" type="button" aria-label="새로고침" title="새로고침"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <button class="icon-btn" id="btn-lock" type="button" aria-label="잠그기" title="잠그기"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
+  </div></header>
+  <main class="wrap">
+    <p class="home-meta" id="home-meta"></p>
+    <div class="htabs" id="htabs" role="tablist" aria-label="사건 상태"></div>
+    <div class="cards" id="cards"></div>
+    <p class="foot">송치·기소는 유죄가 아니고, 불송치(혐의없음)는 증거가 부족하다고 본 수사기관 결정이에요. 모든 기록에는 출처가 있어요.</p>
+  </main>
+</section>
+
+<!-- 사건 상세 -->
+<section id="v-case" hidden>
+  <header class="bar"><div class="bar-in wrap">
+    <a class="icon-btn" href="#" aria-label="사건 목록"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+    <h1 id="c-bar-title"></h1>
+  </div></header>
+  <main class="wrap case">
+    <div class="pane on" data-pane="sum">
+      <div class="c-head">
+        <span class="eyebrow" id="c-eyebrow"></span>
+        <h2 class="c-title" id="c-title"></h2>
+        <p class="c-meta" id="c-meta"></p>
+      </div>
+      <h3 class="pane-h">갈래별 지금 상태</h3>
+      <div class="brs" id="brs"></div>
+      <h3 class="sub">최근 결과</h3>
+      <ol class="mini" id="recent"></ol>
+      <h3 class="sub">다음에 지켜볼 것</h3>
+      <ul class="watch" id="watch"></ul>
+      <details class="gaps"><summary id="gaps-sum"></summary><ul id="gaps"></ul></details>
+    </div>
+
+    <div class="pane" data-pane="flow">
+      <h3 class="pane-h">사건의 흐름</h3>
+      <div class="fl-legend" id="fl-legend"></div>
+      <div class="flow" id="flow"></div>
+    </div>
+
+    <div class="pane" data-pane="rel">
+      <h3 class="pane-h">관계도</h3>
+      <div class="zoom" role="group" aria-label="관계도 크기">
+        <span class="hint">이름을 누르면 그 사람 관련만 남아요 · 그림은 옆으로 밀어 볼 수 있어요</span>
+        <button class="chip" type="button" data-zoom="-1" aria-label="작게">−</button>
+        <button class="chip" type="button" data-zoom="fit">화면에 맞춤</button>
+        <button class="chip" type="button" data-zoom="1" aria-label="크게">＋</button>
+      </div>
+      <div class="graph-box"><div class="graph-inner" id="graph-inner"><svg id="graph" viewBox="0 0 800 450" aria-hidden="true"></svg><div class="glayer" id="glayer" role="group" aria-label="인물과 절차 관계도"></div></div></div>
+      <div class="legend" id="legend"></div>
+      <h3 class="sub">관계 목록</h3>
+      <ul class="rels" id="rels"></ul>
+    </div>
+
+    <div class="pane" data-pane="claim">
+      <h3 class="pane-h">제기된 주장과 현재 공식 판단</h3>
+      <div class="cls" id="claims"></div>
+    </div>
+
+    <div class="pane" data-pane="log">
+      <div class="log-head"><h3 class="pane-h">날짜별 기록 · 출처</h3><span class="muted small" id="count"></span></div>
+      <div class="seg2" role="tablist" aria-label="보기">
+        <button type="button" id="v-events" aria-selected="true">날짜별 기록</button>
+        <button type="button" id="v-sources" aria-selected="false">출처 모아보기</button>
+      </div>
+      <div id="log-events">
+        <div class="chips" id="f-kind" role="group" aria-label="종류"></div>
+        <div class="chips" id="f-branch" role="group" aria-label="갈래"></div>
+        <div class="chips" id="f-actor" hidden></div>
+        <button class="link" id="sort" type="button"></button>
+        <div id="timeline"></div>
+      </div>
+      <div id="log-sources" hidden>
+        <p class="hint" id="src-sum"></p>
+        <ol class="srcs" id="srcs"></ol>
+      </div>
+    </div>
+  </main>
+
+  <nav class="nav" aria-label="사건 화면">
+    <button type="button" data-tab="sum" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 9h8M8 13h8M8 17h5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>요약</button>
+    <button type="button" data-tab="flow"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="4.5" r="2.2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7v3M12 10l-6 3M12 10l6 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><rect x="2.5" y="13" width="7" height="4" rx="1.5" fill="none" stroke="currentColor" stroke-width="2"/><rect x="14.5" y="13" width="7" height="4" rx="1.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M6 17v2.5h12V17M12 19.5V21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>흐름</button>
+    <button type="button" data-tab="log"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4v16M6 7h12M6 12h9M6 17h11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>기록</button>
+    <button type="button" data-tab="rel"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="6" r="2.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="18" cy="8" r="2.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="10" cy="18" r="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8.3 7l7.4.6M7 8.3l2.3 7.4M16.4 10l-4.8 6" fill="none" stroke="currentColor" stroke-width="2"/></svg>관계</button>
+    <button type="button" data-tab="claim"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h10v7H8l-4 3z M14 9h6v7l-3-2h-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>주장</button>
+  </nav>
+</section>
+
+</body>
+</html>
